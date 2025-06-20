@@ -455,3 +455,122 @@ add routes to a Flask app to support full CRUD operations.
 - [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/3.0.x/)
 - [Flask-SQLAlchemy Session](https://flask-sqlalchemy.palletsprojects.com/en/3.0.x/api/#module-flask_sqlalchemy.session)
 - [SQLAlchemy Transaction](https://docs.sqlalchemy.org/en/20/orm/session_transaction.html)
+
+---
+
+## Building a RESTful API with Flask
+
+In this section, we'll extend our Flask application to provide a RESTful API
+for managing pets. This will allow us to perform Create, Read, Update, and
+Delete (CRUD) operations through HTTP requests, making our app accessible to
+clients beyond the Flask shell.
+
+### Setting up Routes
+
+We'll add routes to `app.py` to handle the following endpoints:
+
+- `GET /pets` - Retrieve a list of all pets.
+- `GET /pets/<int:id>` - Retrieve a single pet by its ID.
+- `POST /pets` - Create a new pet.
+- `PATCH /pets/<int:id>` - Update an existing pet.
+- `DELETE /pets/<int:id>` - Delete a pet.
+
+### Example Code
+
+Below is an example implementation of these routes using Flask and Flask-SQLAlchemy:
+
+```python
+from flask import Flask, request, jsonify, abort
+from models import db, Pet
+
+app = Flask(__name__)
+
+@app.route('/pets', methods=['GET'])
+def get_pets():
+    pets = Pet.query.all()
+    pets_list = [{'id': pet.id, 'name': pet.name, 'species': pet.species} for pet in pets]
+    return jsonify(pets_list), 200
+
+@app.route('/pets/<int:id>', methods=['GET'])
+def get_pet(id):
+    pet = Pet.query.get(id)
+    if pet is None:
+        abort(404, description="Pet not found")
+    return jsonify({'id': pet.id, 'name': pet.name, 'species': pet.species}), 200
+
+@app.route('/pets', methods=['POST'])
+def create_pet():
+    data = request.get_json()
+    if not data or not 'name' in data or not 'species' in data:
+        abort(400, description="Missing required fields: name and species")
+    new_pet = Pet(name=data['name'], species=data['species'])
+    db.session.add(new_pet)
+    db.session.commit()
+    return jsonify({'id': new_pet.id, 'name': new_pet.name, 'species': new_pet.species}), 201
+
+@app.route('/pets/<int:id>', methods=['PATCH'])
+def update_pet(id):
+    pet = Pet.query.get(id)
+    if pet is None:
+        abort(404, description="Pet not found")
+    data = request.get_json()
+    if not data:
+        abort(400, description="No data provided")
+    if 'name' in data:
+        pet.name = data['name']
+    if 'species' in data:
+        pet.species = data['species']
+    db.session.commit()
+    return jsonify({'id': pet.id, 'name': pet.name, 'species': pet.species}), 200
+
+@app.route('/pets/<int:id>', methods=['DELETE'])
+def delete_pet(id):
+    pet = Pet.query.get(id)
+    if pet is None:
+        abort(404, description="Pet not found")
+    db.session.delete(pet)
+    db.session.commit()
+    return jsonify({'message': f'Pet {id} deleted'}), 200
+```
+
+### Testing the API
+
+You can test these endpoints using `curl` commands or tools like Postman.
+
+- Get all pets:
+
+```bash
+curl http://localhost:5555/pets
+```
+
+- Get a pet by ID:
+
+```bash
+curl http://localhost:5555/pets/1
+```
+
+- Create a new pet:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"name":"Buddy","species":"Dog"}' http://localhost:5555/pets
+```
+
+- Update a pet:
+
+```bash
+curl -X PATCH -H "Content-Type: application/json" -d '{"name":"Buddy Updated"}' http://localhost:5555/pets/1
+```
+
+- Delete a pet:
+
+```bash
+curl -X DELETE http://localhost:5555/pets/1
+```
+
+### Next Steps
+
+This RESTful API provides a foundation for managing pets programmatically.
+You can extend this by adding validation, error handling, authentication, and
+more complex queries.
+
+---
